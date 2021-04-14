@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+
+import json
+import numpy as np
+from PIL import Image, ImageDraw
+from benchbot_api import ActionResult, Agent, BenchBot
+from votenet_benchbot import votenet_build, votenet_detection, votenet_nms  # new import!
+
+
+class MyAgent(Agent):
+    def __init__(self):
+        self._votenet = votenet_build()
+        self._raw_results = []
+
+    def is_done(self, action_result):
+        return action_result != ActionResult.SUCCESS
+
+    def pick_action(self, observations, action_list):
+        results = votenet_detection(self._votenet, observations)
+        print("Detected %d objects in the frame: %s" %
+              (len(results), ",".join(r['class'] for r in results)))
+        self._raw_results.append(results)
+        return 'move_next', {}
+
+#    def result_filename(self):
+#        return "/results"
+
+    def save_result(self, filename, empty_results, results_format_fns):
+        empty_results['results']['objects'] = votenet_nms(self._raw_results,
+                                                          self._votenet,
+                                                          empty_results[
+                                                              'results'][
+                                                              'class_list'])
+        with open(filename, 'w') as f:
+            json.dump(empty_results, f)
+
+
+if __name__ == '__main__':
+    print("Welcome to my Semantic SLAM solution!")
+    BenchBot(agent=MyAgent()).run()

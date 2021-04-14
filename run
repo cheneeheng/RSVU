@@ -1,0 +1,28 @@
+#!/bin/sh
+
+SUBMISSION_CONTAINER_NAME=$1
+submission_tag=$2  # docker image name and tag
+DOCKER_NETWORK=benchbot_network
+
+echo "Waiting for Docker network ('$DOCKER_NETWORK') to become available..."
+while [ -z "$(docker network ls -q -f name=$DOCKER_NETWORK)" ]; do
+  echo "wait"
+  sleep 1;
+done
+
+echo "Docker network ('$DOCKER_NETWORK') is available."
+
+set +e
+
+# TODO PASSTHROUGH THE ARGS!!!
+docker run -it --gpus all --rm \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v /home/chen/work/semanticmapchallenge/solutions/tutorial_docker/main:/benchbot_submission/main \
+  -v /home/chen/work/semanticmapchallenge/solutions/tutorial_docker/results:/results \
+  -v /home/chen/work/semanticmapchallenge/solutions/pretrained_models:/pretrained_models \
+  -e DISPLAY \
+  --network "$DOCKER_NETWORK" --name="$SUBMISSION_CONTAINER_NAME" \
+  --hostname="$SUBMISSION_CONTAINER_NAME" \
+  -e args="$args" -i "$submission_tag" bash
+
+set -e
